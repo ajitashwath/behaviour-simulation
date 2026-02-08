@@ -1,0 +1,34 @@
+FROM eclipse-temurin:17-jdk-alpine AS builder
+
+WORKDIR /app
+
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+COPY common/pom.xml common/
+COPY control-plane/pom.xml control-plane/
+COPY simulation-engine/pom.xml simulation-engine/
+
+RUN ./mvnw dependency:go-offline -B
+
+COPY common/src common/src
+COPY control-plane/src control-plane/src
+COPY simulation-engine/src simulation-engine/src
+
+RUN ./mvnw clean package -DskipTests -pl common,control-plane -am
+
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache bash procps
+
+COPY --from=builder /app/control-plane/target/*.jar app.jar
+
+RUN mkdir -p /app/data
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

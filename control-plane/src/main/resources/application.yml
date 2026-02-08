@@ -1,0 +1,104 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: behaviour-simulation-control-plane
+  
+  # Database configuration
+  datasource:
+    url: jdbc:h2:file:./data/simulation-db;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # H2 Console for development
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # Jackson JSON configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# Simulation configuration
+simulation:
+  defaults:
+    population-size: 10000
+    content-count: 100
+    rage-spread-multiplier: 1.0
+    joy-spread-multiplier: 1.0
+    attention-decay-rate: 0.05
+    fatigue-accumulation-rate: 0.02
+  
+  storage:
+    base-path: ./data/experiments
+  
+  spark:
+    master: local[*]
+    app-name: BehaviorSimulation
+    submit-mode: in-process
+    engine-jar: ./simulation-engine/target/simulation-engine-1.0.0-SNAPSHOT.jar
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.simulation: DEBUG
+    org.apache.spark: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+---
+# Production profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:simulation}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:}
+  
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  h2:
+    console:
+      enabled: false
+
+simulation:
+  spark:
+    master: ${SPARK_MASTER:local[*]}
+
+logging:
+  level:
+    com.simulation: INFO

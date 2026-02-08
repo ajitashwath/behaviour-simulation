@@ -1,0 +1,14 @@
+FROM apache/spark:3.5.0-java17
+
+USER root
+
+WORKDIR /app
+
+COPY simulation-engine/target/simulation-engine-*-SNAPSHOT.jar /app/simulation-engine.jar
+
+RUN mkdir -p /data/experiments
+
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$PATH:$SPARK_HOME/bin
+
+CMD ["spark-submit", "--class", "com.simulation.spark.SimulationJob", "--master", "local[*]", "/app/simulation-engine.jar"]
