@@ -22,7 +22,6 @@ import static org.apache.spark.sql.functions.*;
 public class ReactionStep implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
     private final SimulationParams params;
 
     /**

@@ -220,7 +220,7 @@ public class ExperimentService {
 
             Human human = Human.builder()
                     .humanId(i)
-                    .mood(mood)
+                    .mood(mood.name())
                     // Random traits with some variation
                     .attentionSpan(0.5 + random.nextDouble() * 0.5) // [0.5, 1.0]
                     .addictionCoeff(0.3 + random.nextDouble() * 0.5) // [0.3, 0.8]
@@ -283,8 +283,8 @@ public class ExperimentService {
      */
     private List<Human> applySimulationStep(List<Human> humans, SimulationParams params, Random random) {
         // Count current mood distribution for contagion
-        long joyCount = humans.stream().filter(h -> h.getMood() == Mood.JOY).count();
-        long rageCount = humans.stream().filter(h -> h.getMood() == Mood.RAGE).count();
+        long joyCount = humans.stream().filter(h -> Mood.JOY.name().equals(h.getMood())).count();
+        long rageCount = humans.stream().filter(h -> Mood.RAGE.name().equals(h.getMood())).count();
         double population = humans.size();
 
         // Contagion probabilities
@@ -298,19 +298,19 @@ public class ExperimentService {
 
             // === 1. Emotional Contagion ===
             // Humans can "catch" emotions from the population
-            if (human.getMood() == Mood.NEUTRAL) {
+            if (Mood.NEUTRAL.name().equals(human.getMood())) {
                 double roll = random.nextDouble();
                 if (roll < rageContagionProb) {
-                    builder.mood(Mood.RAGE);
+                    builder.mood(Mood.RAGE.name());
                 } else if (roll < rageContagionProb + joyContagionProb) {
-                    builder.mood(Mood.JOY);
+                    builder.mood(Mood.JOY.name());
                 }
-            } else if (human.getMood() == Mood.JOY && random.nextDouble() < rageContagionProb * 0.5) {
+            } else if (Mood.JOY.name().equals(human.getMood()) && random.nextDouble() < rageContagionProb * 0.5) {
                 // Joy can turn to rage (half rate)
-                builder.mood(Mood.NEUTRAL);
-            } else if (human.getMood() == Mood.RAGE && random.nextDouble() < joyContagionProb * 0.3) {
+                builder.mood(Mood.NEUTRAL.name());
+            } else if (Mood.RAGE.name().equals(human.getMood()) && random.nextDouble() < joyContagionProb * 0.3) {
                 // Rage is sticky - harder to lose (30% of joy rate)
-                builder.mood(Mood.NEUTRAL);
+                builder.mood(Mood.NEUTRAL.name());
             }
 
             // === 2. Attention Decay ===
@@ -352,7 +352,8 @@ public class ExperimentService {
         List<Double> attentions = new ArrayList<>();
 
         for (Human h : humans) {
-            switch (h.getMood()) {
+            Mood mood = Mood.valueOf(h.getMood());
+            switch (mood) {
                 case JOY -> joyCount++;
                 case NEUTRAL -> neutralCount++;
                 case RAGE -> rageCount++;
@@ -465,7 +466,7 @@ public class ExperimentService {
     private Human rowToHuman(Row row) {
         return Human.builder()
                 .humanId(row.getAs("humanId"))
-                .mood(Mood.valueOf(row.getAs("mood")))
+                .mood(row.getAs("mood"))
                 .attentionSpan(row.getAs("attentionSpan"))
                 .addictionCoeff(row.getAs("addictionCoeff"))
                 .reactionProb(row.getAs("reactionProb"))

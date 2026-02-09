@@ -6,8 +6,8 @@ import com.simulation.spark.metrics.MetricsAggregator;
 import com.simulation.spark.step.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructType;
+//import org.apache.spark.sql.types.DataTypes;
+//import org.apache.spark.sql.types.StructType;
 
 import java.io.Serializable;
 import java.nio.file.Files;

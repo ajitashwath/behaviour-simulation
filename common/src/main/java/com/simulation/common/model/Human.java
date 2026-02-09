@@ -39,7 +39,21 @@ public class Human implements Serializable {
      * Current emotional state.
      * Updates each step based on content exposure and contagion.
      */
-    private Mood mood;
+    private String mood;
+
+    /**
+     * Helper to get mood as Enum
+     */
+    public Mood asMoodEnum() {
+        return mood != null ? Mood.valueOf(mood) : Mood.NEUTRAL;
+    }
+
+    /**
+     * Helper to set mood from Enum
+     */
+    public void updateMoodFromEnum(Mood mood) {
+        this.mood = mood.name();
+    }
 
     /**
      * Capacity for consuming content. Range: [0, 1]
@@ -89,7 +103,7 @@ public class Human implements Serializable {
     public static Human createDefault(long humanId) {
         return Human.builder()
                 .humanId(humanId)
-                .mood(Mood.NEUTRAL)
+                .mood(Mood.NEUTRAL.name())
                 .attentionSpan(0.7)
                 .addictionCoeff(0.5)
                 .reactionProb(0.5)

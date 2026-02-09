@@ -1,0 +1,13 @@
+﻿common\src\main\java\com\simulation\common\model\Human.java:    public Mood getMoodEnum() {
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:        long joyCount = humans.stream().filter(h -> Mood.JOY.name().equals(h.getMood())).count();
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:        long rageCount = humans.stream().filter(h -> Mood.RAGE.name().equals(h.getMood())).count();
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:            if (Mood.NEUTRAL.name().equals(human.getMood())) {
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:            } else if (Mood.JOY.name().equals(human.getMood()) && random.nextDouble() < rageContagionProb * 0.5) {
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:            } else if (Mood.RAGE.name().equals(human.getMood()) && random.nextDouble() < joyContagionProb * 0.3) {
+control-plane\src\main\java\com\simulation\control\service\ExperimentService.java:            Mood mood = Mood.valueOf(h.getMood());
+simulation-engine\src\main\java\com\simulation\spark\SimulationJob.java:                metrics.getMoodDistribution().get("JOY"),
+simulation-engine\src\main\java\com\simulation\spark\SimulationJob.java:                metrics.getMoodDistribution().get("NEUTRAL"),
+simulation-engine\src\main\java\com\simulation\spark\SimulationJob.java:                metrics.getMoodDistribution().get("RAGE"));
+simulation-engine\src\main\java\com\simulation\spark\step\MoodContagionStep.java:        long joyCount = getMoodCount(moodCounts, "JOY");
+simulation-engine\src\main\java\com\simulation\spark\step\MoodContagionStep.java:        long rageCount = getMoodCount(moodCounts, "RAGE");
+simulation-engine\src\main\java\com\simulation\spark\step\MoodContagionStep.java:    private long getMoodCount(Dataset<Row> moodCounts, String mood) {

@@ -28,7 +28,7 @@
         <!-- Dependency versions -->
         <spring-boot.version>3.2.2</spring-boot.version>
         <spark.version>3.5.0</spark.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.15.3</jackson.version>
         <lombok.version>1.18.30</lombok.version>
         <slf4j.version>2.0.11</slf4j.version>
 
@@ -106,6 +106,12 @@
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
                 <scope>test</scope>
+            </dependency>
+            <!-- Force ANTLR version for Spark 3.5 compatibility -->
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>4.9.3</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -264,7 +264,3 @@ behaviour-simulation/
 - **Apache Spark**: 3.5.0
 - **Spring Boot**: 3.2.2
 - **Database**: H2 (dev) / PostgreSQL (prod)
-
-## License
-
-MIT
