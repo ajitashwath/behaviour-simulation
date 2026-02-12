@@ -1,6 +1,6 @@
 # Behavior Simulation Platform
 
-A production-ready platform for simulating large populations of synthetic humans interacting with content over time. Built with **Spring Boot** (control plane) and **Apache Spark** (simulation engine).
+A platform for simulating large populations of synthetic humans interacting with content over time. Built with **Spring Boot** (control plane) and **Apache Spark** (simulation engine).
 
 ## What It Does
 
@@ -12,7 +12,6 @@ This system models:
 - **Outrage Amplification** - Asymmetric spread rates for different emotions
 
 ### Key Experiment
-
 The platform demonstrates that **if rage spreads 10% faster than joy**, significant behavioral divergence emerges over time.
 
 ## Architecture
@@ -62,11 +61,10 @@ The platform demonstrates that **if rage spreads 10% faster than joy**, signific
 ```
 
 ## Quick Start
-
 ### Prerequisites
 - Java 17+
 - Maven 3.8+
-- Docker (optional, for containerized deployment)
+- Docker
 
 ### Build
 
