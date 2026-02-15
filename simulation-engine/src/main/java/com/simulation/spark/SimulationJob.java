@@ -1,18 +1,18 @@
 package com.simulation.spark;
 
+import com.simulation.common.dto.NetworkType;
 import com.simulation.common.dto.SimulationParams;
 import com.simulation.common.model.*;
 import com.simulation.spark.metrics.MetricsAggregator;
+import com.simulation.spark.network.*;
 import com.simulation.spark.step.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.*;
-//import org.apache.spark.sql.types.DataTypes;
-//import org.apache.spark.sql.types.StructType;
-
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -34,8 +34,12 @@ public class SimulationJob implements Serializable {
     private final SimulationParams params;
     private final String storagePath;
 
+    // Network topology (null if using all-to-all exposure)
+    private Dataset<Row> networkEdges;
+
     // Simulation step processors
     private final ExposureStep exposureStep;
+    private final NetworkExposureStep networkExposureStep;
     private final ReactionStep reactionStep;
     private final MoodContagionStep moodContagionStep;
     private final AttentionDecayStep attentionDecayStep;
@@ -49,6 +53,7 @@ public class SimulationJob implements Serializable {
 
         // Initialize step processors
         this.exposureStep = new ExposureStep(params);
+        this.networkExposureStep = new NetworkExposureStep(params);
         this.reactionStep = new ReactionStep(params);
         this.moodContagionStep = new MoodContagionStep(params);
         this.attentionDecayStep = new AttentionDecayStep(params);
@@ -126,7 +131,16 @@ public class SimulationJob implements Serializable {
         // === SIMULATION PIPELINE ===
 
         // Step 1: Compute exposure (which humans see which content)
-        Dataset<Row> exposuresDF = exposureStep.compute(humansDF, contentDF, currentStep, stepSeed);
+        Dataset<Row> exposuresDF;
+        if (params.getNetworkType() == NetworkType.ALL_TO_ALL) {
+            // Use original all-to-all exposure
+            exposuresDF = exposureStep.compute(humansDF, contentDF, currentStep, stepSeed);
+        } else {
+            // Use network-based exposure
+            Dataset<Row> previousInteractions = loadPreviousInteractions(currentStep);
+            exposuresDF = networkExposureStep.compute(
+                    humansDF, contentDF, networkEdges, previousInteractions, currentStep, stepSeed);
+        }
 
         // Step 2: Calculate reactions
         Dataset<Row> reactionsDF = reactionStep.compute(exposuresDF, stepSeed);
@@ -169,10 +183,28 @@ public class SimulationJob implements Serializable {
      * Initialize population for a new experiment.
      */
     public void initializePopulation() {
-        log.info("Initializing population of {} humans", params.getPopulationSize());
+        log.info("Initializing population of {} humans with network type: {}",
+                params.getPopulationSize(), params.getNetworkType());
 
         // Create DataFrame with initial humans
         Dataset<Row> humansDF = createInitialPopulation();
+
+        // Generate network structure if configured
+        if (params.getNetworkType() != NetworkType.ALL_TO_ALL) {
+            NetworkTopology topology = createNetworkTopology();
+            this.networkEdges = topology.generateEdges(spark, params.getPopulationSize(), params.getSeed());
+
+            // Cache network for repeated use
+            this.networkEdges.cache();
+
+            // Save network structure
+            saveNetwork(networkEdges);
+
+            // Compute and log network metrics
+            Map<String, Double> metrics = topology.computeMetrics(networkEdges);
+            log.info("Network topology: {}", topology.getTopologyName());
+            log.info("Network metrics: {}", metrics);
+        }
 
         // Save as step 0
         saveState(humansDF, 0);
@@ -222,6 +254,37 @@ public class SimulationJob implements Serializable {
     private void saveInteractions(Dataset<Row> df, long step) {
         Path path = Paths.get(storagePath, "interactions", String.format("step_%05d.parquet", step));
         df.write().mode(SaveMode.Overwrite).parquet(path.toString());
+    }
+
+    private Dataset<Row> loadPreviousInteractions(long currentStep) {
+        if (currentStep == 0) {
+            // No previous interactions at step 0
+            return spark.emptyDataFrame();
+        }
+        Path path = Paths.get(storagePath, "interactions", String.format("step_%05d.parquet", currentStep));
+        if (Files.exists(path)) {
+            return spark.read().parquet(path.toString());
+        }
+        return spark.emptyDataFrame();
+    }
+
+    private void saveNetwork(Dataset<Row> df) {
+        Path path = Paths.get(storagePath, "network", "edges.parquet");
+        df.write().mode(SaveMode.Overwrite).parquet(path.toString());
+        log.info("Saved network with {} edges", df.count());
+    }
+
+    private NetworkTopology createNetworkTopology() {
+        switch (params.getNetworkType()) {
+            case BARABASI_ALBERT:
+                return new BarabasiAlbertNetwork(params.getNetworkM());
+            case WATTS_STROGATZ:
+                return new WattsStrogatzNetwork(params.getNetworkK(), params.getNetworkP());
+            case RANDOM:
+                return new RandomGraph(params.getNetworkK());
+            default:
+                throw new IllegalStateException("Unexpected network type: " + params.getNetworkType());
+        }
     }
 
     // ========== Initialization ==========

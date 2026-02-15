@@ -33,6 +33,15 @@
             <artifactId>spark-sql_2.13</artifactId>
         </dependency>
 
+        <!-- GraphFrames for network analysis -->
+        <!-- TODO: Add GraphFrames when needed for triangle counting / clustering
+        <dependency>
+            <groupId>graphframes</groupId>
+            <artifactId>graphframes</artifactId>
+            <version>0.8.3-spark3.5-s_2.13</version>
+        </dependency>
+        -->
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

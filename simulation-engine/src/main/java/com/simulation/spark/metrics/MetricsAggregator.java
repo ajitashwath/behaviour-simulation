@@ -33,56 +33,86 @@ public class MetricsAggregator implements Serializable {
         // Mood distribution
         Map<String, Long> moodDist = computeMoodDistribution(humans);
 
-        // Mood entropy
-        double entropy = computeMoodEntropy(moodDist, population);
+        long joyCount = moodDist.getOrDefault("JOY", 0L);
+        long neutralCount = moodDist.getOrDefault("NEUTRAL", 0L);
+        long rageCount = moodDist.getOrDefault("RAGE", 0L);
 
-        // Dominance ratio
-        double dominance = computeDominanceRatio(moodDist, population);
-
-        // Attention Gini coefficient
-        double gini = computeAttentionGini(humans);
-
-        // Basic stats
-        Row stats = humans.agg(
-                avg("attentionSpan"),
-                avg("fatigue"),
-                expr("percentile_approx(fatigue, 0.95)")).first();
-
-        double avgAttention = stats.isNullAt(0) ? 0.0 : stats.getDouble(0);
-        double avgFatigue = stats.isNullAt(1) ? 0.0 : stats.getDouble(1);
-        double fatigueP95 = stats.isNullAt(2) ? 0.0 : stats.getDouble(2);
-
-        // Collapsed count
-        long collapsed = humans.filter(col("fatigue").geq(0.95)).count();
-
-        // Reaction stats
+        // Interaction stats
         long totalInteractions = 0;
-        long totalReactions = 0;
+        long positiveInteractions = 0;
+        long negativeInteractions = 0;
+
         if (!reactions.isEmpty()) {
             totalInteractions = reactions.count();
-            totalReactions = reactions.filter(col("reacted")).count();
+            positiveInteractions = reactions.filter(col("emotionType").equalTo("POSITIVE")).count();
+            negativeInteractions = reactions.filter(col("emotionType").equalTo("NEGATIVE")).count();
         }
 
-        double reactionRate = totalInteractions > 0
-                ? (double) totalReactions / totalInteractions
-                : 0.0;
+        // Engagement metrics
+        double avgEngagement = population > 0 ? (double) totalInteractions / population : 0.0;
+        double engagementGini = computeEngagementGini(humans, reactions);
+
+        // Polarization metrics
+        double polarizationIndex = population > 0 ? Math.abs(rageCount - joyCount) / (double) population : 0.0;
+
+        double extremismRate = population > 0 ? (rageCount + joyCount) / (double) population : 0.0;
+
+        double fragmentationIndex = population > 0 ? 1.0 - (neutralCount / (double) population) : 0.0;
 
         return Metrics.builder()
                 .timeStep(timeStep)
                 .moodDistribution(moodDist)
-                .moodEntropy(entropy)
-                .emotionDominanceRatio(dominance)
-                .rageReproductionRate(1.0) // TODO: calculate from step-over-step
-                .joyReproductionRate(1.0)
-                .attentionGini(gini)
-                .averageAttention(avgAttention)
-                .averageFatigue(avgFatigue)
-                .fatigueP95(fatigueP95)
-                .collapsedCount(collapsed)
                 .totalInteractions(totalInteractions)
-                .totalReactions(totalReactions)
-                .reactionRate(reactionRate)
+                .positiveInteractions(positiveInteractions)
+                .negativeInteractions(negativeInteractions)
+                .avgEngagement(avgEngagement)
+                .engagementGini(engagementGini)
+                .polarizationIndex(polarizationIndex)
+                .extremismRate(extremismRate)
+                .fragmentationIndex(fragmentationIndex)
                 .build();
+    }
+
+    private double computeEngagementGini(Dataset<Row> humans, Dataset<Row> reactions) {
+        if (reactions.isEmpty()) {
+            return 0.0;
+        }
+
+        // Count interactions per human
+        Dataset<Row> engagementPerHuman = reactions
+                .groupBy("humanId")
+                .agg(count("*").as("engagement"));
+
+        // Left join to include humans with zero engagement
+        Dataset<Row> allEngagement = humans
+                .select("humanId")
+                .join(engagementPerHuman, "humanId", "left")
+                .select(coalesce(col("engagement"), lit(0L)).as("engagement"));
+
+        return computeGiniCoefficient(allEngagement, "engagement");
+    }
+
+    private double computeGiniCoefficient(Dataset<Row> data, String column) {
+        Dataset<Row> sorted = data
+                .select(column)
+                .orderBy(column)
+                .withColumn("idx", monotonically_increasing_id());
+
+        long n = sorted.count();
+        if (n == 0)
+            return 0.0;
+
+        Row sums = sorted.agg(
+                sum(column),
+                sum(col("idx").multiply(col(column)))).first();
+
+        double total = sums.isNullAt(0) ? 0.0 : sums.getDouble(0);
+        double weightedSum = sums.isNullAt(1) ? 0.0 : sums.getDouble(1);
+
+        if (total == 0)
+            return 0.0;
+
+        return (2.0 * weightedSum) / (n * total) - (n + 1.0) / n;
     }
 
     private Map<String, Long> computeMoodDistribution(Dataset<Row> humans) {
@@ -103,84 +133,4 @@ public class MetricsAggregator implements Serializable {
         return dist;
     }
 
-    /**
-     * Compute Shannon entropy of mood distribution.
-     * 
-     * Formula: H = -Σ(p * log2(p))
-     * 
-     * Range: [0, log2(3)] ≈ [0, 1.585]
-     * - 0 = all one mood (minimum diversity)
-     * - log2(3) = perfectly balanced (maximum diversity)
-     */
-    private double computeMoodEntropy(Map<String, Long> moodDist, long population) {
-        if (population == 0)
-            return 0.0;
-
-        double entropy = 0.0;
-        for (long count : moodDist.values()) {
-            if (count > 0) {
-                double p = (double) count / population;
-                entropy -= p * (Math.log(p) / Math.log(2));
-            }
-        }
-        return entropy;
-    }
-
-    /**
-     * Compute emotion dominance ratio.
-     * 
-     * Formula: max(mood_counts) / population
-     * 
-     * Range: [0.33, 1.0]
-     * - 0.33 = perfectly balanced
-     * - 1.0 = complete polarization
-     */
-    private double computeDominanceRatio(Map<String, Long> moodDist, long population) {
-        if (population == 0)
-            return 0.0;
-
-        long maxCount = moodDist.values().stream()
-                .mapToLong(Long::longValue)
-                .max()
-                .orElse(0L);
-
-        return (double) maxCount / population;
-    }
-
-    /**
-     * Compute Gini coefficient for attention distribution.
-     * 
-     * Uses Spark's built-in functions for efficiency.
-     * 
-     * Formula: (2 * Σ(i * x[i])) / (n * Σ(x[i])) - (n + 1) / n
-     * 
-     * Range: [0, 1]
-     * - 0 = perfect equality
-     * - 1 = maximum inequality
-     */
-    private double computeAttentionGini(Dataset<Row> humans) {
-        // Get sorted attention values with indices
-        Dataset<Row> sorted = humans
-                .select("attentionSpan")
-                .orderBy("attentionSpan")
-                .withColumn("idx", monotonically_increasing_id());
-
-        long n = sorted.count();
-        if (n == 0)
-            return 0.0;
-
-        // Compute required sums
-        Row sums = sorted.agg(
-                sum("attentionSpan"),
-                sum(col("idx").multiply(col("attentionSpan")))).first();
-
-        double totalAttention = sums.isNullAt(0) ? 0.0 : sums.getDouble(0);
-        double weightedSum = sums.isNullAt(1) ? 0.0 : sums.getDouble(1);
-
-        if (totalAttention == 0)
-            return 0.0;
-
-        // Gini formula
-        return (2.0 * weightedSum) / (n * totalAttention) - (n + 1.0) / n;
-    }
 }

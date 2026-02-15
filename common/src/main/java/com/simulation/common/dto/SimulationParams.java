@@ -146,6 +146,76 @@ public class SimulationParams {
     @Builder.Default
     private double initialExposureRate = 0.1;
 
+    // === Network Topology Parameters ===
+
+    /**
+     * Type of social network topology.
+     * 
+     * - ALL_TO_ALL: Current implementation (all humans see all content -
+     * unrealistic)
+     * - BARABASI_ALBERT: Scale-free network with hub nodes (realistic for social
+     * media)
+     * - WATTS_STROGATZ: Small-world network with high clustering
+     * - RANDOM: Erdős-Rényi random graph (baseline control)
+     * 
+     * Default: ALL_TO_ALL (for backward compatibility)
+     */
+    @Builder.Default
+    private NetworkType networkType = NetworkType.ALL_TO_ALL;
+
+    /**
+     * Number of edges each new node creates (for Barabási-Albert network).
+     * 
+     * Higher m → denser network, lower degree variance
+     * Typical values: 2-5
+     * 
+     * Range: 1 to 10
+     * Default: 3
+     */
+    @Min(1)
+    @Max(10)
+    @Builder.Default
+    private int networkM = 3;
+
+    /**
+     * Number of nearest neighbors in lattice (for Watts-Strogatz network).
+     * Must be even.
+     * 
+     * Higher k → denser network, higher clustering
+     * Typical values: 4-10
+     * 
+     * Range: 2 to 20
+     * Default: 6
+     */
+    @Min(2)
+    @Max(20)
+    @Builder.Default
+    private int networkK = 6;
+
+    /**
+     * Rewiring probability (for Watts-Strogatz network).
+     * 
+     * p=0 → regular lattice (high clustering, long paths)
+     * p=0.01-0.1 → small-world (high clustering, short paths)
+     * p=1 → random graph (low clustering, short paths)
+     * 
+     * Range: 0.0 to 1.0
+     * Default: 0.05 (small-world regime)
+     */
+    @Min(0)
+    @Max(1)
+    @Builder.Default
+    private double networkP = 0.05;
+
+    // === Recommender Algorithm Parameters ===
+    @Builder.Default
+    private RecommenderType recommenderType = RecommenderType.NONE;
+
+    @Min(0)
+    @Max(1)
+    @Builder.Default
+    private double explorationRate = 0.3; // For Thompson Sampling
+
     // === Population Initialization ===
 
     /**

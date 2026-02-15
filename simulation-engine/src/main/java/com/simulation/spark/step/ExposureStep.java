@@ -45,11 +45,11 @@ public class ExposureStep implements Serializable {
                                 col("addictionCoeff"),
                                 col("mood"));
 
-                // Calculate content visibility based on age
+                // Decay visibility based on content age
                 Dataset<Row> contentWithVisibility = content
                                 .withColumn("age", lit(currentStep).minus(col("createdAtStep")))
                                 .withColumn("visibility",
-                                                pow(lit(2.0), negate(col("age")).divide(col("halfLife"))));
+                                                pow(lit(2.0), col("age").multiply(lit(-1.0)).divide(col("halfLife"))));
 
                 // Cross join (every human sees all content)
                 // In production with large populations, you'd sample or partition

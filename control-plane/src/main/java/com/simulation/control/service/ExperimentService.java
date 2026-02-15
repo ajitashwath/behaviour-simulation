@@ -395,15 +395,14 @@ public class ExperimentService {
         return Metrics.builder()
                 .timeStep(timeStep)
                 .moodDistribution(moodDist)
-                .moodEntropy(entropy)
-                .emotionDominanceRatio(dominance)
-                .rageReproductionRate(1.0) // Simplified - would need previous step data
-                .joyReproductionRate(1.0)
-                .attentionGini(gini)
-                .averageAttention(totalAttention / n)
-                .averageFatigue(totalFatigue / n)
-                .fatigueP95(fatigueP95)
-                .collapsedCount(collapsedCount)
+                .totalInteractions(0L)
+                .positiveInteractions(0L)
+                .negativeInteractions(0L)
+                .avgEngagement(0.0)
+                .engagementGini(gini)
+                .polarizationIndex(Math.abs(rageCount - joyCount) / n)
+                .extremismRate((rageCount + joyCount) / n)
+                .fragmentationIndex(1.0 - (neutralCount / n))
                 .build();
     }
 
@@ -513,7 +512,11 @@ public class ExperimentService {
     private Metrics rowToMetrics(Row row) {
         return Metrics.builder()
                 .timeStep(row.getAs("timeStep"))
-                .moodEntropy(row.getAs("moodEntropy"))
+                .polarizationIndex(row.getAs("polarizationIndex"))
+                .extremismRate(row.getAs("extremismRate"))
+                .fragmentationIndex(row.getAs("fragmentationIndex"))
+                .avgEngagement(row.getAs("avgEngagement"))
+                .engagementGini(row.getAs("engagementGini"))
                 .emotionDominanceRatio(row.getAs("emotionDominanceRatio"))
                 .attentionGini(row.getAs("attentionGini"))
                 .averageAttention(row.getAs("averageAttention"))
