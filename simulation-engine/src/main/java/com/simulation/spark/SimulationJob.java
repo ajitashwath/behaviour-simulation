@@ -42,6 +42,7 @@ public class SimulationJob implements Serializable {
     private final NetworkExposureStep networkExposureStep;
     private final ReactionStep reactionStep;
     private final MoodContagionStep moodContagionStep;
+    private final ContinuousMoodContagionStep continuousMoodContagionStep; // NEW
     private final AttentionDecayStep attentionDecayStep;
     private final FatigueStep fatigueStep;
     private final MetricsAggregator metricsAggregator;
@@ -53,9 +54,10 @@ public class SimulationJob implements Serializable {
 
         // Initialize step processors
         this.exposureStep = new ExposureStep(params);
-        this.networkExposureStep = new NetworkExposureStep(params);
-        this.reactionStep = new ReactionStep(params);
+        this.networkExposureStep = new NetworkExposureStep();
+        this.reactionStep = new ReactionStep();
         this.moodContagionStep = new MoodContagionStep(params);
+        this.continuousMoodContagionStep = new ContinuousMoodContagionStep(params); // NEW
         this.attentionDecayStep = new AttentionDecayStep(params);
         this.fatigueStep = new FatigueStep(params);
         this.metricsAggregator = new MetricsAggregator();
@@ -146,7 +148,16 @@ public class SimulationJob implements Serializable {
         Dataset<Row> reactionsDF = reactionStep.compute(exposuresDF, stepSeed);
 
         // Step 3: Update moods via emotional contagion
-        Dataset<Row> moodUpdatedDF = moodContagionStep.apply(humansDF, reactionsDF, stepSeed);
+        Dataset<Row> moodUpdatedDF;
+        if (params.isUseContinuousEmotions()) {
+            // Use continuous 2D affect space dynamics
+            log.debug("Using continuous emotion model");
+            moodUpdatedDF = continuousMoodContagionStep.apply(humansDF, reactionsDF, networkEdges);
+        } else {
+            // Use discrete mood contagion
+            log.debug("Using discrete mood model");
+            moodUpdatedDF = moodContagionStep.apply(humansDF, reactionsDF, stepSeed);
+        }
 
         // Step 4: Apply attention decay and recovery
         Dataset<Row> attentionUpdatedDF = attentionDecayStep.apply(moodUpdatedDF);
@@ -289,7 +300,7 @@ public class SimulationJob implements Serializable {
 
     // ========== Initialization ==========
 
-    private Dataset<Row> createInitialPopulation() {
+    public Dataset<Row> createInitialPopulation() {
         // Generate humans using Spark SQL
         Dataset<Row> rangeDF = spark.range(0, params.getPopulationSize())
                 .withColumnRenamed("id", "humanId");
@@ -299,7 +310,7 @@ public class SimulationJob implements Serializable {
         double joyFrac = params.getInitialMoodDistribution()[0];
         double neutralFrac = params.getInitialMoodDistribution()[1];
 
-        return rangeDF
+        rangeDF = rangeDF
                 // Determine initial mood based on distribution
                 .withColumn("moodRoll", rand(seed))
                 .withColumn("mood",
@@ -310,12 +321,33 @@ public class SimulationJob implements Serializable {
                 .withColumn("attentionSpan", lit(0.5).plus(rand(seed + 1).multiply(0.5)))
                 .withColumn("addictionCoeff", lit(0.3).plus(rand(seed + 2).multiply(0.5)))
                 .withColumn("reactionProb", lit(0.3).plus(rand(seed + 3).multiply(0.4)))
-                .withColumn("fatigue", rand(seed + 4).multiply(0.1))
-                // Cleanup
-                .drop("moodRoll");
+                .withColumn("fatigue", rand(seed + 4).multiply(0.1));
+
+        // Add continuous emotion fields if enabled
+        Dataset<Row> finalDF;
+        if (params.isUseContinuousEmotions()) {
+            finalDF = rangeDF
+                    // Initialize valence/arousal from discrete mood
+                    .withColumn("valence",
+                            when(col("mood").equalTo("JOY"), lit(0.7))
+                                    .when(col("mood").equalTo("RAGE"), lit(-0.7))
+                                    .otherwise(lit(0.0)))
+                    .withColumn("arousal",
+                            when(col("mood").equalTo("JOY"), lit(0.5))
+                                    .when(col("mood").equalTo("RAGE"), lit(0.8))
+                                    .otherwise(lit(0.0)))
+                    // Baseline traits (individual differences)
+                    .withColumn("baselineValence", lit(-0.2).plus(rand(seed + 5).multiply(0.4))) // [-0.2, 0.2]
+                    .withColumn("baselineArousal", lit(-0.3).plus(rand(seed + 6).multiply(0.6))); // [-0.3, 0.3]
+        } else {
+            finalDF = rangeDF;
+        }
+
+        return finalDF.drop("moodRoll");
+
     }
 
-    private Dataset<Row> createInitialContent() {
+    public Dataset<Row> createInitialContent() {
         Dataset<Row> rangeDF = spark.range(0, params.getContentCount())
                 .withColumnRenamed("id", "contentId");
 

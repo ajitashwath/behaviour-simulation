@@ -1,0 +1,21 @@
+# Existing dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+scipy>=1.10.0
+
+# NEW: Sensitivity analysis
+SALib>=1.4.7
+
+# NEW: Emotion classification
+transformers>=4.30.0
+torch>=2.0.0
+openai>=1.0.0
+
+# NEW: Bayesian calibration
+pyabc>=0.11.0
+
+# NEW: Performance monitoring
+psutil>=5.9.0
+tqdm>=4.65.0

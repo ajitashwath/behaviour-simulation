@@ -403,6 +403,12 @@ public class ExperimentService {
                 .polarizationIndex(Math.abs(rageCount - joyCount) / n)
                 .extremismRate((rageCount + joyCount) / n)
                 .fragmentationIndex(1.0 - (neutralCount / n))
+                .emotionDominanceRatio(dominance)
+                .attentionGini(gini)
+                .averageAttention(totalAttention / n)
+                .averageFatigue(totalFatigue / n)
+                .fatigueP95(fatigueP95)
+                .collapsedCount(collapsedCount)
                 .build();
     }
 

@@ -96,6 +96,46 @@ public class Human implements Serializable {
      */
     private double fatigue;
 
+    // === Continuous Emotion Fields (NEW for Phase 2) ===
+
+    /**
+     * Valence: pleasure-displeasure dimension. Range: [-1, 1]
+     * 
+     * -1 = maximally negative (displeasure)
+     * 0 = neutral
+     * +1 = maximally positive (pleasure)
+     * 
+     * NULL when using discrete mood-only model.
+     */
+    private Double valence;
+
+    /**
+     * Arousal: activation-deactivation dimension. Range: [-1, 1]
+     * 
+     * -1 = maximally calm (deactivated)
+     * 0 = neutral
+     * +1 = maximally excited (activated)
+     * 
+     * NULL when using discrete mood-only model.
+     */
+    private Double arousal;
+
+    /**
+     * Baseline valence: individual trait. Range: [-1, 1]
+     * 
+     * Represents personality tendency (optimism vs pessimism).
+     * Emotions regress toward this baseline over time.
+     */
+    private Double baselineValence;
+
+    /**
+     * Baseline arousal: individual trait. Range: [-1, 1]
+     * 
+     * Represents personality tendency (calm vs excitable).
+     * Arousal regresses toward this baseline over time.
+     */
+    private Double baselineArousal;
+
     /**
      * Create a human with default neutral state.
      * Useful for testing and initialization.
@@ -126,5 +166,59 @@ public class Human implements Serializable {
      */
     public boolean isCollapsed() {
         return fatigue >= 0.95;
+    }
+
+    // === Continuous Emotion Methods ===
+
+    /**
+     * Get emotional state in continuous affect space.
+     * 
+     * For backward compatibility: if valence/arousal are null,
+     * converts from discrete mood.
+     * 
+     * @return Emotional state (continuous 2D affect)
+     */
+    public EmotionalState getEmotionalState() {
+        if (valence != null && arousal != null) {
+            return new EmotionalState(valence, arousal);
+        }
+        // Fall back to discrete mood
+        return EmotionalState.fromDiscrete(asMoodEnum());
+    }
+
+    /**
+     * Update from continuous emotional state.
+     * 
+     * Also updates discrete mood field for backward compatibility.
+     * 
+     * @param state New emotional state
+     */
+    public void updateEmotionalState(EmotionalState state) {
+        this.valence = state.getValence();
+        this.arousal = state.getArousal();
+        // Sync discrete mood
+        this.mood = state.getDiscreteMood().name();
+    }
+
+    /**
+     * Initialize continuous emotions from discrete mood.
+     * 
+     * Used for migrating from discrete to continuous model.
+     */
+    public void initializeContinuousFromDiscrete() {
+        if (valence == null || arousal == null) {
+            EmotionalState state = EmotionalState.fromDiscrete(asMoodEnum());
+            this.valence = state.getValence();
+            this.arousal = state.getArousal();
+        }
+    }
+
+    /**
+     * Check if this human uses continuous emotions.
+     * 
+     * @return true if valence/arousal are set
+     */
+    public boolean hasContinuousEmotions() {
+        return valence != null && arousal != null;
     }
 }

@@ -62,6 +62,30 @@ public class Content implements Serializable {
      */
     private long createdAtStep;
 
+    // === Continuous Emotion Fields (NEW for Phase 2) ===
+
+    /**
+     * Valence of content: pleasure-displeasure. Range: [-1, 1]
+     * 
+     * -1 = maximally negative content
+     * 0 = neutral content
+     * +1 = maximally positive content
+     * 
+     * NULL when using discrete emotionType-only model.
+     */
+    private Double valence;
+
+    /**
+     * Arousal of content: activation level. Range: [-1, 1]
+     * 
+     * -1 = maximally calming content
+     * 0 = neutral activation
+     * +1 = maximally exciting content
+     * 
+     * NULL when using discrete emotionType-only model.
+     */
+    private Double arousal;
+
     /**
      * Calculate content visibility at a given time step.
      * Uses exponential decay based on half-life.
@@ -100,5 +124,69 @@ public class Content implements Serializable {
                 .halfLife(10.0)
                 .createdAtStep(0)
                 .build();
+    }
+
+    // === Continuous Emotion Methods ===
+
+    /**
+     * Get content emotional affect in continuous space.
+     * 
+     * For backward compatibility: if valence/arousal are null,
+     * converts from discrete emotionType.
+     * 
+     * @return Emotional state (continuous 2D affect)
+     */
+    public EmotionalState getAffect() {
+        if (valence != null && arousal != null) {
+            return new EmotionalState(valence, arousal);
+        }
+        // Fall back to discrete emotionType
+        return convertEmotionTypeToAffect(emotionType);
+    }
+
+    /**
+     * Convert discrete EmotionType to continuous affect.
+     * 
+     * Mapping based on typical affective associations:
+     * - NEGATIVE: negative valence, high arousal
+     * - POSITIVE: positive valence, moderate arousal
+     * - NEUTRAL: neutral valence and arousal
+     */
+    private static EmotionalState convertEmotionTypeToAffect(EmotionType type) {
+        if (type == null) {
+            return new EmotionalState(0.0, 0.0);
+        }
+
+        switch (type) {
+            case NEGATIVE:
+                return new EmotionalState(-0.7, 0.8); // Negative, highly activated
+            case POSITIVE:
+                return new EmotionalState(0.7, 0.5); // Positive, moderately activated
+            case NEUTRAL:
+            default:
+                return new EmotionalState(0.0, 0.0); // Neutral
+        }
+    }
+
+    /**
+     * Check if this content uses continuous emotions.
+     * 
+     * @return true if valence/arousal are set
+     */
+    public boolean hasContinuousEmotions() {
+        return valence != null && arousal != null;
+    }
+
+    /**
+     * Initialize continuous emotions from discrete type.
+     * 
+     * Used for migrating from discrete to continuous model.
+     */
+    public void initializeContinuousFromDiscrete() {
+        if (valence == null || arousal == null) {
+            EmotionalState affect = convertEmotionTypeToAffect(emotionType);
+            this.valence = affect.getValence();
+            this.arousal = affect.getArousal();
+        }
     }
 }

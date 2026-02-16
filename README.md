@@ -1,4 +1,40 @@
-# Emotional Contagion Network Simulator - Research Platform
+# Emotional Contagion# Behavior Simulation Platform
+
+## New Feature: Richer Emotion Model (v2.0)
+
+We have introduced a **continuous 2D affect space** (Valence × Arousal) to replace the discrete mood system. This allows for more realistic emotion dynamics, including mixed states and intensity-weighted contagion.
+
+### Enabling Continuous Emotions
+To use the new model, set `useContinuousEmotions = true` in your simulation configuration or via command line arguments.
+
+**Parameters:**
+- `useContinuousEmotions`: Enable continuous model (default: `false` for backward compatibility)
+- `emotionRegressionRate`: Rate at which emotions return to baseline (default: `0.05`)
+- `arousalDecayRate`: Additional decay rate for arousal (default: `0.10`)
+- `contentInfluenceWeight`: Impact of content on emotions (default: `0.15`)
+- `socialInfluenceWeight`: Impact of neighbors on emotions (default: `0.10`)
+
+### Visualization Tools
+We provide Python tools to visualize the affect space dynamics:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Visualize a single simulation step (Snapshot)
+python analysis/emotion_visualizer.py data/state/step_00050.parquet
+
+# Visualize evolution over time (Time Series)
+python analysis/emotion_visualizer.py data/state/
+```
+
+Outputs include:
+- **Affect Distribution**: 2D scatter plot of population emotions.
+- **Density Heatmap**: Concentration of emotions in the Valence-Arousal space.
+- **Trajectories**: Emotional paths of individual agents over time.
+- **Summary Statistics**: Mean valence/arousal and mood fraction evolution.
+
+---
 
 ## What This Is
 

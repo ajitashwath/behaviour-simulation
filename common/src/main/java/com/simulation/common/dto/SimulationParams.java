@@ -228,6 +228,65 @@ public class SimulationParams {
     @Builder.Default
     private double[] initialMoodDistribution = new double[] { 0.2, 0.6 };
 
+    // === Continuous Emotion Model Parameters (NEW for Phase 2) ===
+
+    /**
+     * Enable continuous 2D affect space (valence × arousal).
+     * 
+     * When false: uses discrete mood (JOY, NEUTRAL, RAGE)
+     * When true: uses continuous valence and arousal dimensions
+     * 
+     * Default: false (backward compatibility)
+     */
+    @Builder.Default
+    private boolean useContinuousEmotions = false;
+
+    /**
+     * Rate at which emotions regress toward baseline (individual trait).
+     * 
+     * Formula: new_emotion = current * (1 - rate) + baseline * rate
+     * Higher values mean faster emotional regulation.
+     * 
+     * Range: 0.0 to 0.2
+     * Default: 0.05 (5% regression per step)
+     */
+    @Builder.Default
+    private double emotionRegressionRate = 0.05;
+
+    /**
+     * Arousal decay rate (arousal decays faster than valence).
+     * 
+     * Arousal tends to return to baseline quicker than valence
+     * in psychological models.
+     * 
+     * Range: 0.0 to 0.3
+     * Default: 0.10 (10% decay per step)
+     */
+    @Builder.Default
+    private double arousalDecayRate = 0.10;
+
+    /**
+     * Weight for content influence on emotions.
+     * 
+     * Used in continuous model emotion updates.
+     * 
+     * Range: 0.0 to 1.0
+     * Default: 0.15 (15% weight)
+     */
+    @Builder.Default
+    private double contentInfluenceWeight = 0.15;
+
+    /**
+     * Weight for social contagion (neighbor) influence.
+     * 
+     * Used in continuous model emotion updates.
+     * 
+     * Range: 0.0 to 1.0
+     * Default: 0.10 (10% weight)
+     */
+    @Builder.Default
+    private double socialInfluenceWeight = 0.10;
+
     /**
      * Create parameters for the required rage-vs-joy experiment.
      * 

@@ -38,6 +38,14 @@ public class Metrics implements Serializable {
     private double extremismRate; // (RAGE + JOY) / population
     private double fragmentationIndex; // 1 - NEUTRAL / population
 
+    // Extended metrics
+    private double emotionDominanceRatio; // Dominance of most prevalent emotion
+    private double attentionGini; // Inequality in attention distribution
+    private double averageAttention; // Mean attention span
+    private double averageFatigue; // Mean fatigue level
+    private double fatigueP95; // 95th percentile fatigue
+    private long collapsedCount; // Count of collapsed humans
+
     // Convenience getters
     public Long getJoyCount() {
         return moodDistribution.getOrDefault("JOY", 0L);
