@@ -12,7 +12,24 @@ To use the new model, set `useContinuousEmotions = true` in your simulation conf
 - `emotionRegressionRate`: Rate at which emotions return to baseline (default: `0.05`)
 - `arousalDecayRate`: Additional decay rate for arousal (default: `0.10`)
 - `contentInfluenceWeight`: Impact of content on emotions (default: `0.15`)
-- `socialInfluenceWeight`: Impact of neighbors on emotions (default: `0.10`)
+
+### 3. Sensitivity Analysis (Phase 3)
+Identify most influential parameters using Sobol analysis.
+```bash
+python run_sensitivity.py
+```
+
+### 4. Calibration (Phase 4)
+Tune parameters to match empirical data (via ABC).
+```bash
+python run_calibration.py
+```
+
+### 5. Benchmarks (Phase 5)
+Measure engine performance and scalability.
+```bash
+python benchmarks/benchmark_runner.py
+```
 
 ### Visualization Tools
 We provide Python tools to visualize the affect space dynamics:

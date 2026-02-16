@@ -1,7 +1,8 @@
 """
-Performance benchmarking module for scaling analysis.
+Scaling Benchmarks module.
+Implements weak and strong scaling tests for the simulation engine.
 """
 
-from .benchmark_runner import ScalingBenchmark, BenchmarkConfig, BenchmarkResult
+from .benchmark_runner import BenchmarkRunner, BenchmarkCreate
 
-__all__ = ['ScalingBenchmark', 'BenchmarkConfig', 'BenchmarkResult']
+__all__ = ['BenchmarkRunner', 'BenchmarkCreate']

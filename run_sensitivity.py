@@ -6,8 +6,20 @@ if __name__ == "__main__":
     print("Running Sensitivity Analysis (Mock Mode)")
     print("==============================================")
     
-    # Initialize analyzer (will use mock mode since JAR is missing)
-    analyzer = SobolSensitivityAnalyzer(simulation_jar_path="missing.jar")
+    import os
+    
+    # Auto-detect JAR
+    jar_path = "simulation-engine/target/simulation-engine-1.0-SNAPSHOT.jar"
+    if os.path.exists(jar_path):
+        print(f"✅ Found Simulation JAR: {jar_path}")
+        print("Running in REAL mode (spark-submit)...")
+    else:
+        print(f"⚠️ JAR not found at {jar_path}")
+        print("Running in MOCK mode (synthetic data)...")
+        jar_path = "missing.jar"
+
+    # Initialize analyzer
+    analyzer = SobolSensitivityAnalyzer(simulation_jar_path=jar_path)
     
     # Generate samples
     # Using small N for quick demonstration
