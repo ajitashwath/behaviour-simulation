@@ -111,31 +111,36 @@ public class NetworkExposureStep implements Serializable {
                 Dataset<Row> withExposureProb;
 
                 if (rankedContent != null) {
-                        // Join with recommender scores
+                        // Join with recommender scores using sequence of columns to avoid duplicate
+                        // columns
                         Dataset<Row> withScores = humanNeighborContent
-                                        .join(rankedContent,
-                                                        humanNeighborContent.col("humanId")
-                                                                        .equalTo(rankedContent.col("humanId"))
-                                                                        .and(humanNeighborContent.col("contentId")
-                                                                                        .equalTo(rankedContent.col(
-                                                                                                        "contentId"))),
+                                        .join(rankedContent.select(col("humanId"), col("contentId"), col("score")),
+                                                        scala.collection.JavaConverters
+                                                                        .asScalaBuffer(java.util.Arrays
+                                                                                        .asList("humanId", "contentId"))
+                                                                        .toSeq(),
                                                         "left");
 
                         withExposureProb = withScores
                                         .withColumn("social_proof",
                                                         // More neighbors consuming → exponentially higher probability
                                                         lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
-                                        .withColumn("recommender_multiplier",
-                                                        // Normalize score or provide a minimum baseline if missing
-                                                        when(col("score").isNotNull(),
-                                                                        col("score").multiply(lit(2.0)).plus(lit(0.5)))
-                                                                        .otherwise(lit(1.0)))
+                                        .withColumn("recommender_score",
+                                                        when(col("score").isNotNull(), col("score"))
+                                                                        .otherwise(lit(0.0)))
                                         .withColumn("exposureProb",
                                                         col("attentionSpan")
                                                                         .multiply(col("addictionCoeff"))
                                                                         .multiply(col("visibility"))
-                                                                        .multiply(col("social_proof"))
-                                                                        .multiply(col("recommender_multiplier")));
+                                                                        // Blend social proof and algorithmic
+                                                                        // recommendation (e.g. 50/50 mix when both
+                                                                        // present)
+                                                                        // Crucially, if social_proof is 0
+                                                                        // (exploration), recommender_score can still
+                                                                        // drive exposure!
+                                                                        .multiply(col("social_proof").multiply(lit(0.5))
+                                                                                        .plus(col("recommender_score")
+                                                                                                        .multiply(lit(0.5)))));
                 } else {
                         // Default logic without recommender
                         withExposureProb = humanNeighborContent

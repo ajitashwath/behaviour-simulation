@@ -51,6 +51,7 @@ public class RLComparisonExperiment {
                 .master("local[*]")
                 .config("spark.driver.memory", "4g")
                 .config("spark.executor.memory", "4g")
+                .config("spark.ui.enabled", "false")
                 .getOrCreate();
 
         try {

@@ -66,6 +66,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Fix for NoClassDefFoundError: javax/servlet/http/HttpServlet -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+        </dependency>
+
         <!-- JSON Processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
