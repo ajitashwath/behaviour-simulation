@@ -1,0 +1,11 @@
+﻿Analyzing data from: e:/behaviour-simulation/rl-pilot\rl_comparison_2026-02-23_21-28-20\data
+
+--- Final Polarization Summary (Step 50) ---
+           condition   mean      std
+     baseline_random 0.0114 0.008003
+rl_thompson_sampling 0.0114 0.008003
+
+T-test assuming unequal variance (Welch's): p-value = 1.0000
+Result: No statistically significant difference.
+
+Saved comparison plot to rl_polarization_comparison.png

@@ -6,6 +6,9 @@ import com.simulation.common.model.*;
 import com.simulation.spark.metrics.MetricsAggregator;
 import com.simulation.spark.network.*;
 import com.simulation.spark.step.*;
+import com.simulation.spark.recommender.Recommender;
+import com.simulation.spark.recommender.ThompsonSamplingRecommender;
+import com.simulation.spark.recommender.RandomRecommender;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.*;
 import java.io.Serializable;
@@ -36,6 +39,9 @@ public class SimulationJob implements Serializable {
 
     // Network topology (null if using all-to-all exposure)
     private Dataset<Row> networkEdges;
+
+    // Recommender for content ranking
+    private Recommender recommender;
 
     // Simulation step processors
     private final ExposureStep exposureStep;
@@ -132,6 +138,14 @@ public class SimulationJob implements Serializable {
 
         // === SIMULATION PIPELINE ===
 
+        Dataset<Row> previousInteractions = loadPreviousInteractions(currentStep);
+
+        // Rank content using recommender if configured
+        Dataset<Row> rankedContent = null;
+        if (recommender != null) {
+            rankedContent = recommender.rankContent(humansDF, contentDF, previousInteractions, currentStep);
+        }
+
         // Step 1: Compute exposure (which humans see which content)
         Dataset<Row> exposuresDF;
         if (params.getNetworkType() == NetworkType.ALL_TO_ALL) {
@@ -139,9 +153,8 @@ public class SimulationJob implements Serializable {
             exposuresDF = exposureStep.compute(humansDF, contentDF, currentStep, stepSeed);
         } else {
             // Use network-based exposure
-            Dataset<Row> previousInteractions = loadPreviousInteractions(currentStep);
             exposuresDF = networkExposureStep.compute(
-                    humansDF, contentDF, networkEdges, previousInteractions, currentStep, stepSeed);
+                    humansDF, contentDF, networkEdges, previousInteractions, rankedContent, currentStep, stepSeed);
         }
 
         // Step 2: Calculate reactions
@@ -199,6 +212,12 @@ public class SimulationJob implements Serializable {
 
         // Create DataFrame with initial humans
         Dataset<Row> humansDF = createInitialPopulation();
+
+        // Initialize recommender
+        if (params.getRecommenderType() != com.simulation.common.dto.RecommenderType.NONE) {
+            recommender = createRecommender();
+            log.info("Initialized recommender: {}", recommender.getName());
+        }
 
         // Generate network structure if configured
         if (params.getNetworkType() != NetworkType.ALL_TO_ALL) {
@@ -295,6 +314,18 @@ public class SimulationJob implements Serializable {
                 return new RandomGraph(params.getNetworkK());
             default:
                 throw new IllegalStateException("Unexpected network type: " + params.getNetworkType());
+        }
+    }
+
+    private Recommender createRecommender() {
+        switch (params.getRecommenderType()) {
+            case THOMPSON_SAMPLING:
+                return new ThompsonSamplingRecommender(0.1); // Using default exploration rate
+            case RANDOM:
+                return new RandomRecommender();
+            case NONE:
+            default:
+                throw new IllegalStateException("Unexpected recommender type: " + params.getRecommenderType());
         }
     }
 

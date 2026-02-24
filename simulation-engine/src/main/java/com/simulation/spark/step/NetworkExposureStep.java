@@ -42,6 +42,7 @@ public class NetworkExposureStep implements Serializable {
                         Dataset<Row> content,
                         Dataset<Row> networkEdges,
                         Dataset<Row> previousInteractions,
+                        Dataset<Row> rankedContent,
                         long currentStep,
                         long seed) {
 
@@ -56,29 +57,96 @@ public class NetworkExposureStep implements Serializable {
 
                 // Step 3: Join humans with content their neighbors consumed
                 // Left join ensures all humans participate even if neighbors consumed nothing
-                Dataset<Row> humanNeighborContent = humans
-                                .join(neighborActivity,
-                                                humans.col("humanId").equalTo(neighborActivity.col("humanId")),
-                                                "left")
-                                .join(contentWithVisibility,
-                                                neighborActivity.col("contentId")
-                                                                .equalTo(contentWithVisibility.col("contentId")),
-                                                "left")
-                                .filter(col("contentId").isNotNull()); // Remove humans with no neighbor activity
+                Dataset<Row> humanNeighborContent;
+                if (previousInteractions.isEmpty()) {
+                        // Cold start: all humans see a random subset of content
+                        humanNeighborContent = humans.crossJoin(contentWithVisibility.sample(0.1, seed))
+                                        .withColumn("neighbor_count", lit(0));
+                } else {
+                        Dataset<Row> fromNetwork = humans
+                                        .join(neighborActivity,
+                                                        humans.col("humanId").equalTo(neighborActivity.col("humanId")),
+                                                        "inner")
+                                        .join(contentWithVisibility,
+                                                        neighborActivity.col("contentId")
+                                                                        .equalTo(contentWithVisibility
+                                                                                        .col("contentId")),
+                                                        "inner")
+                                        .select(
+                                                        humans.col("humanId"),
+                                                        humans.col("attentionSpan"),
+                                                        humans.col("addictionCoeff"),
+                                                        humans.col("mood"),
+                                                        contentWithVisibility.col("contentId"),
+                                                        contentWithVisibility.col("visibility"),
+                                                        contentWithVisibility.col("emotionType"),
+                                                        contentWithVisibility.col("intensity"),
+                                                        neighborActivity.col("neighbor_count"));
+
+                        // Add algorithmic exploration: mix in some content regardless of neighbors
+                        Dataset<Row> expHumans = humans.sample(0.1, seed + 1);
+                        Dataset<Row> expContent = contentWithVisibility.sample(0.05, seed + 2);
+                        Dataset<Row> explorationContent = expHumans // 10% of users exploring
+                                        .crossJoin(expContent)
+                                        .withColumn("neighbor_count", lit(0))
+                                        .select(
+                                                        col("humanId"),
+                                                        col("attentionSpan"),
+                                                        col("addictionCoeff"),
+                                                        col("mood"),
+                                                        col("contentId"),
+                                                        col("visibility"),
+                                                        col("emotionType"),
+                                                        col("intensity"),
+                                                        col("neighbor_count"));
+
+                        humanNeighborContent = fromNetwork.unionByName(explorationContent).dropDuplicates("humanId",
+                                        "contentId");
+                }
 
                 // Step 4: Calculate exposure probability
-                // Formula: P(expose) = attention * addiction * visibility * social_proof
-                Dataset<Row> withExposureProb = humanNeighborContent
-                                .withColumn("social_proof",
-                                                // More neighbors consuming → exponentially higher probability
-                                                // Formula: 1 - 0.5^neighbor_count
-                                                // 1 neighbor = 0.5, 2 neighbors = 0.75, 3 neighbors = 0.875, etc.
-                                                lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
-                                .withColumn("exposureProb",
-                                                col("attentionSpan")
-                                                                .multiply(col("addictionCoeff"))
-                                                                .multiply(col("visibility"))
-                                                                .multiply(col("social_proof")));
+                // Formula: P(expose) = attention * addiction * visibility * social_proof *
+                // (optional) recommender_score
+
+                Dataset<Row> withExposureProb;
+
+                if (rankedContent != null) {
+                        // Join with recommender scores
+                        Dataset<Row> withScores = humanNeighborContent
+                                        .join(rankedContent,
+                                                        humanNeighborContent.col("humanId")
+                                                                        .equalTo(rankedContent.col("humanId"))
+                                                                        .and(humanNeighborContent.col("contentId")
+                                                                                        .equalTo(rankedContent.col(
+                                                                                                        "contentId"))),
+                                                        "left");
+
+                        withExposureProb = withScores
+                                        .withColumn("social_proof",
+                                                        // More neighbors consuming → exponentially higher probability
+                                                        lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
+                                        .withColumn("recommender_multiplier",
+                                                        // Normalize score or provide a minimum baseline if missing
+                                                        when(col("score").isNotNull(),
+                                                                        col("score").multiply(lit(2.0)).plus(lit(0.5)))
+                                                                        .otherwise(lit(1.0)))
+                                        .withColumn("exposureProb",
+                                                        col("attentionSpan")
+                                                                        .multiply(col("addictionCoeff"))
+                                                                        .multiply(col("visibility"))
+                                                                        .multiply(col("social_proof"))
+                                                                        .multiply(col("recommender_multiplier")));
+                } else {
+                        // Default logic without recommender
+                        withExposureProb = humanNeighborContent
+                                        .withColumn("social_proof",
+                                                        lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
+                                        .withColumn("exposureProb",
+                                                        col("attentionSpan")
+                                                                        .multiply(col("addictionCoeff"))
+                                                                        .multiply(col("visibility"))
+                                                                        .multiply(col("social_proof")));
+                }
 
                 // Step 5: Stochastic exposure decision
                 // Each human-content pair is exposed with computed probability

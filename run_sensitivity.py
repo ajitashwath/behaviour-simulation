@@ -8,7 +8,6 @@ if __name__ == "__main__":
     
     import os
     
-    # Auto-detect JAR
     jar_path = "simulation-engine/target/simulation-engine-1.0-SNAPSHOT.jar"
     if os.path.exists(jar_path):
         print(f"✅ Found Simulation JAR: {jar_path}")
@@ -18,19 +17,12 @@ if __name__ == "__main__":
         print("Running in MOCK mode (synthetic data)...")
         jar_path = "missing.jar"
 
-    # Initialize analyzer
     analyzer = SobolSensitivityAnalyzer(simulation_jar_path=jar_path)
     
-    # Generate samples
-    # Using small N for quick demonstration
     samples = analyzer.generate_samples(n=128)
     
-    # Run analysis
-    # This uses the _mock_simulation method in sobol_analyzer.py
-    # which simulates the expected relationships
     Si = analyzer.run_sensitivity_analysis(samples, metric_name='polarizationIndex')
     
-    # Print results
     print("\n--- Sensitivity Indices for Polarization ---")
     print(f"{'Parameter':<25} {'S1 (Direct)':<15} {'ST (Total)':<15}")
     print("-" * 55)
@@ -40,7 +32,6 @@ if __name__ == "__main__":
         st = Si['ST'][i]
         print(f"{name:<25} {s1:.4f}          {st:.4f}")
 
-    # Plot results
     output_plot = "sensitivity_polarization.png"
     analyzer.plot_indices(Si, 'Polarization Index', output_plot)
     print(f"\nPlot saved to: {output_plot}")

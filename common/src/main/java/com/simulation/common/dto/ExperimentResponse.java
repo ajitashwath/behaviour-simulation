@@ -9,9 +9,6 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Response DTO for experiment state and metrics.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,14 +23,8 @@ public class ExperimentResponse {
     private Instant createdAt;
     private Instant updatedAt;
 
-    /**
-     * Summary of current population state.
-     */
     private PopulationSummary populationSummary;
 
-    /**
-     * Metrics history if requested.
-     */
     private List<Metrics> metricsHistory;
 
     @Data
