@@ -60,7 +60,7 @@ public class SimulationJob implements Serializable {
 
         // Initialize step processors
         this.exposureStep = new ExposureStep(params);
-        this.networkExposureStep = new NetworkExposureStep();
+        this.networkExposureStep = new NetworkExposureStep(params);
         this.reactionStep = new ReactionStep();
         this.moodContagionStep = new MoodContagionStep(params);
         this.continuousMoodContagionStep = new ContinuousMoodContagionStep(params); // NEW

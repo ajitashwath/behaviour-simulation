@@ -83,7 +83,7 @@ public class MoodContagionStep implements Serializable {
                                                 .otherwise(lit("JOY")))
                                 // RAGE is sticky - hard to lose
                                 .when(col("mood").equalTo("RAGE"),
-                                        when(col("contagionRoll").lt(joyContagionProb * 0.3), lit("NEUTRAL"))
+                                        when(col("contagionRoll").lt(joyContagionProb * params.getRageStickiness()), lit("NEUTRAL"))
                                                 .when(col("totalEmotionDelta").gt(0.4), lit("NEUTRAL"))
                                                 .otherwise(lit("RAGE")))
                                 .otherwise(col("mood")))

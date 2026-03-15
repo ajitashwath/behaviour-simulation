@@ -3,6 +3,8 @@ package com.simulation.spark.step;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 
+import com.simulation.common.dto.SimulationParams;
+
 import java.io.Serializable;
 
 import static org.apache.spark.sql.functions.*;
@@ -22,6 +24,12 @@ import static org.apache.spark.sql.functions.*;
 public class NetworkExposureStep implements Serializable {
 
         private static final long serialVersionUID = 1L;
+
+        private final SimulationParams params;
+
+        public NetworkExposureStep(SimulationParams params) {
+                this.params = params;
+        }
 
         /**
          * Compute exposures using network structure.
@@ -124,7 +132,7 @@ public class NetworkExposureStep implements Serializable {
                         withExposureProb = withScores
                                         .withColumn("social_proof",
                                                         // More neighbors consuming → exponentially higher probability
-                                                        lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
+                                                        lit(1.0).minus(pow(lit(params.getSocialProofBase()), col("neighbor_count"))))
                                         .withColumn("recommender_score",
                                                         when(col("score").isNotNull(), col("score"))
                                                                         .otherwise(lit(0.0)))
@@ -145,7 +153,7 @@ public class NetworkExposureStep implements Serializable {
                         // Default logic without recommender
                         withExposureProb = humanNeighborContent
                                         .withColumn("social_proof",
-                                                        lit(1.0).minus(pow(lit(0.5), col("neighbor_count"))))
+                                                        lit(1.0).minus(pow(lit(params.getSocialProofBase()), col("neighbor_count"))))
                                         .withColumn("exposureProb",
                                                         col("attentionSpan")
                                                                         .multiply(col("addictionCoeff"))

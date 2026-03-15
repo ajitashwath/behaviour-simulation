@@ -55,6 +55,28 @@ public class SimulationParams {
     @Builder.Default
     private int contentCount = 100;
 
+    // === Model Sensitivity Parameters ===
+    
+    /**
+     * Rate at which RAGE recovers compared to JOY.
+     * Lower means more "sticky" (harder to lose).
+     * 
+     * Range: 0.1 to 1.0
+     * Default: 0.3
+     */
+    @Builder.Default
+    private double rageStickiness = 0.3;
+
+    /**
+     * Base for the non-linear social proof function.
+     * Formula: 1 - b^k
+     * 
+     * Range: 0.1 to 0.9
+     * Default: 0.5
+     */
+    @Builder.Default
+    private double socialProofBase = 0.5;
+
     // === Spread Multipliers ===
     // These control how fast each emotion spreads through contagion.
     // Values > 1.0 mean faster spread, < 1.0 mean slower spread.
@@ -299,6 +321,8 @@ public class SimulationParams {
                 .contentCount(100)
                 .rageSpreadMultiplier(1.1) // Key: 10% faster rage
                 .joySpreadMultiplier(1.0) // Baseline joy
+                .rageStickiness(0.3)
+                .socialProofBase(0.5)
                 .build();
     }
 
